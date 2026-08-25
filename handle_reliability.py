@@ -98,6 +98,10 @@ def should_refresh(last_enriched_at: Optional[str], now: datetime, ttl_days: int
         when = datetime.fromisoformat(last_enriched_at.replace("Z", "+00:00"))
     except ValueError:
         return True
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
     age_days = (now - when).days
     return age_days >= ttl_days
 

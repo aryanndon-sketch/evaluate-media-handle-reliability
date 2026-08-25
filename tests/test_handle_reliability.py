@@ -72,6 +72,7 @@ class HandleReliabilityTests(unittest.TestCase):
         self.assertTrue(should_refresh(None, now))
         self.assertFalse(should_refresh("2026-08-10T00:00:00+00:00", now, ttl_days=30))
         self.assertTrue(should_refresh("2026-06-01T00:00:00+00:00", now, ttl_days=30))
+        self.assertFalse(should_refresh("2026-08-10T00:00:00", now, ttl_days=30))
 
 
 if __name__ == "__main__":

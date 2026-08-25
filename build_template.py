@@ -22,6 +22,7 @@ def build_template(output_path: str = "handles_template.xlsx") -> None:
         "manual_impersonation_flag",
         "manual_parody_labeled",
         "manual_account_age_bucket",
+        "manual_bio_text",
     ]
 
     for i, header in enumerate(headers, start=1):

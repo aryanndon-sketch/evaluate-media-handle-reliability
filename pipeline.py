@@ -16,6 +16,7 @@ from handle_reliability import (
     score_handle,
     utc_now_iso,
 )
+from open_source_model import OpenSourceBioIdentityModel
 
 
 DEFAULT_CREDIBLE_DOMAINS = {
@@ -157,9 +158,18 @@ def run_pipeline(
     credible_domains: Iterable[str],
     low_credibility_domains: Iterable[str],
     factcheck_failed_handles: Iterable[str],
+    use_open_source_bio_model: bool = False,
+    open_source_model_name: str = "facebook/bart-large-mnli",
+    open_source_model_threshold: float = 0.65,
 ) -> None:
     rows = load_input_rows(input_path)
     results: List[Dict[str, Any]] = []
+    bio_model = None
+    if use_open_source_bio_model:
+        bio_model = OpenSourceBioIdentityModel(
+            model_name=open_source_model_name,
+            confidence_threshold=open_source_model_threshold,
+        )
 
     conn = sqlite3.connect(sqlite_path)
     init_db(conn)
@@ -168,6 +178,13 @@ def run_pipeline(
             if not row.get("platform") or not (row.get("handle") or row.get("url") or row.get("linked_domain")):
                 continue
             try:
+                if bio_model and not row.get("manual_identity_clear"):
+                    inferred_identity = bio_model.predict_identity_clear(clean_cell(row.get("manual_bio_text")))
+                    if inferred_identity is True:
+                        row["manual_identity_clear"] = "yes"
+                    elif inferred_identity is False:
+                        row["manual_identity_clear"] = "no"
+
                 handle_id = upsert_handle(conn, row)
                 result = score_handle(
                     row=row,
@@ -218,6 +235,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--credible-domains-file", default="", help="Optional newline-delimited credible domains")
     parser.add_argument("--low-cred-domains-file", default="", help="Optional newline-delimited low-credibility domains")
     parser.add_argument("--factcheck-failed-handles-file", default="", help="Optional newline-delimited fact-check-failed handles")
+    parser.add_argument(
+        "--use-open-source-bio-model",
+        action="store_true",
+        help="Enable optional local open-source model inference on manual_bio_text when manual_identity_clear is missing",
+    )
+    parser.add_argument(
+        "--open-source-model-name",
+        default="facebook/bart-large-mnli",
+        help="HuggingFace model name for --use-open-source-bio-model",
+    )
+    parser.add_argument(
+        "--open-source-model-threshold",
+        type=float,
+        default=0.65,
+        help="Minimum confidence required to accept open-source model inference (0-1)",
+    )
     return parser.parse_args()
 
 
@@ -241,6 +274,9 @@ def main() -> None:
         credible_domains=credible,
         low_credibility_domains=low_cred,
         factcheck_failed_handles=failed_handles,
+        use_open_source_bio_model=args.use_open_source_bio_model,
+        open_source_model_name=args.open_source_model_name,
+        open_source_model_threshold=args.open_source_model_threshold,
     )
 
 

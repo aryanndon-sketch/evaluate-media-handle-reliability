@@ -1,4 +1,4 @@
-# post_handle_reliabilty_checker
+# evaluate-media-handle-reliability
 
 Handle-level source reliability pipeline (not post-level yet).
 
@@ -34,6 +34,7 @@ Manual review columns (optional but recommended):
 - `manual_impersonation_flag` (`yes|no|unknown`)
 - `manual_parody_labeled` (`yes|no|unknown|not_applicable`)
 - `manual_account_age_bucket` (`under_3_months|3mo_2yr|2yr_plus|unknown`)
+- `manual_bio_text` (raw bio text for optional model inference)
 
 ## Setup
 
@@ -64,6 +65,20 @@ python pipeline.py \
   --credible-domains-file credible_domains.txt \
   --low-cred-domains-file low_cred_domains.txt \
   --factcheck-failed-handles-file failed_handles.txt
+
+# optional local open-source model usage (no proprietary API calls)
+python pipeline.py \
+  --input handles.xlsx \
+  --output handles_labeled.xlsx \
+  --use-open-source-bio-model \
+  --open-source-model-name facebook/bart-large-mnli \
+  --open-source-model-threshold 0.65
+```
+
+To use `--use-open-source-bio-model`, install local OSS model dependencies:
+
+```bash
+python -m pip install transformers torch
 ```
 
 ## Tests
