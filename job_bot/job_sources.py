@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from .compliance import ComplianceConfig, SourceRateLimiter
-from .models import JobPosting, WorkMode
+from .models import AtsType, JobPosting, WorkMode
 
 
 class JobSourceError(RuntimeError):
@@ -34,8 +34,10 @@ class JobCollector:
         self.rate_limiter = SourceRateLimiter(config.requests_per_minute_per_source)
 
     def _normalize(self, raw: dict, source: str) -> JobPosting:
+        ats_raw = str(raw.get("ats_type", AtsType.OTHER.value)).lower()
+        ats_type = AtsType(ats_raw) if ats_raw in {a.value for a in AtsType} else AtsType.OTHER
         return JobPosting(
-            id=str(raw.get("id") or raw.get("job_id") or f"{source}-{raw.get('title', 'job')}") ,
+            id=str(raw.get("id") or raw.get("job_id") or f"{source}-{raw.get('title', 'job')}"),
             title=raw.get("title", ""),
             company=raw.get("company", ""),
             requirements_text=raw.get("requirements", ""),
@@ -47,6 +49,7 @@ class JobCollector:
             domain=raw.get("domain", "general"),
             application_url=raw.get("application_url", ""),
             source=source,
+            ats_type=ats_type,
         )
 
     def collect(self, sources: list[JobSource], query: str) -> list[JobPosting]:

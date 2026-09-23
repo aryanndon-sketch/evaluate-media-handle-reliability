@@ -11,6 +11,16 @@ class WorkMode(str, Enum):
     ONSITE = "onsite"
 
 
+class AtsType(str, Enum):
+    LINKEDIN = "linkedin"
+    INDEED = "indeed"
+    GREENHOUSE = "greenhouse"
+    LEVER = "lever"
+    WORKDAY = "workday"
+    ASHBY = "ashby"
+    OTHER = "other"
+
+
 class ApplicationStatus(str, Enum):
     DRAFTED = "drafted"
     PENDING_USER_ACTION = "pending_user_action"
@@ -33,6 +43,23 @@ class ResumeProfile:
 
 
 @dataclass(slots=True)
+class ResumeVariant:
+    id: str
+    file_path: str
+    label: str = ""
+    keywords: set[str] = field(default_factory=set)
+    domains: set[str] = field(default_factory=set)
+
+
+@dataclass(slots=True)
+class ScreeningQuestion:
+    prompt: str
+    target_field: str = ""
+    required: bool = True
+    options: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class JobPosting:
     id: str
     title: str
@@ -49,6 +76,7 @@ class JobPosting:
     domain: str = "general"
     application_url: str = ""
     source: str = ""
+    ats_type: AtsType = AtsType.OTHER
 
 
 @dataclass(slots=True)
@@ -73,5 +101,12 @@ class UserFilters:
 class ApplicationRecord:
     job_id: str
     status: ApplicationStatus
+    company: str = ""
+    title: str = ""
+    source: str = ""
+    resume_variant_id: str = ""
     field_values: dict[str, Any] = field(default_factory=dict)
+    question_answers: dict[str, str] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+    attempts: int = 0
+    last_error: str = ""

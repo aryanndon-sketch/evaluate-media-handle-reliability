@@ -7,8 +7,15 @@ class ApplicationWorkflow:
     def __init__(self) -> None:
         self.records: dict[str, ApplicationRecord] = {}
 
-    def start(self, job: JobPosting) -> ApplicationRecord:
-        record = ApplicationRecord(job_id=job.id, status=ApplicationStatus.DRAFTED)
+    def start(self, job: JobPosting, resume_variant_id: str = "") -> ApplicationRecord:
+        record = ApplicationRecord(
+            job_id=job.id,
+            status=ApplicationStatus.DRAFTED,
+            company=job.company,
+            title=job.title,
+            source=job.source,
+            resume_variant_id=resume_variant_id,
+        )
         self.records[job.id] = record
         return record
 
@@ -36,6 +43,8 @@ class ApplicationWorkflow:
             "years_experience": str(profile.years_experience),
             "locations": ", ".join(profile.locations),
             "roles": ", ".join(profile.roles),
+            "work_authorization": profile.work_authorization,
+            "visa_status": profile.visa_status,
         }
         for field in required_fields:
             values[field] = mapper.get(field, "")
@@ -43,13 +52,34 @@ class ApplicationWorkflow:
         record.status = ApplicationStatus.READY_TO_SUBMIT
         return values
 
+    def attach_answers(self, job_id: str, answers: dict[str, str]) -> None:
+        record = self.records[job_id]
+        record.question_answers.update(answers)
+
+    def mark_retry(self, job_id: str, error: str) -> None:
+        record = self.records[job_id]
+        record.attempts += 1
+        record.last_error = error
+        record.status = ApplicationStatus.PENDING_USER_ACTION
+        record.notes.append(f"Retry scheduled: {error}")
+
+    def mark_failed(self, job_id: str, error: str) -> None:
+        record = self.records[job_id]
+        record.last_error = error
+        record.status = ApplicationStatus.FAILED
+        record.notes.append(f"Failed: {error}")
+
     def preview(self, job_id: str) -> dict:
         record = self.records[job_id]
         return {
             "job_id": record.job_id,
             "status": record.status.value,
+            "resume_variant_id": record.resume_variant_id,
             "field_values": record.field_values,
+            "question_answers": record.question_answers,
             "notes": record.notes,
+            "attempts": record.attempts,
+            "last_error": record.last_error,
         }
 
     def finalize(self, job_id: str, user_approved: bool) -> ApplicationStatus:
